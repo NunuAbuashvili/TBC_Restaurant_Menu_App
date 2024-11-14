@@ -19,6 +19,7 @@ class MainCategory(models.Model):
     class Meta:
         verbose_name = _('Main Category')
         verbose_name_plural = _('Main Categories')
+        ordering = ['id']
 
 
 class SubCategory(models.Model):
@@ -37,6 +38,7 @@ class SubCategory(models.Model):
     class Meta:
         verbose_name = _('Subcategory')
         verbose_name_plural = _('Subcategories')
+        ordering = ['id']
 
 
 class MenuItem(models.Model):
@@ -57,12 +59,13 @@ class MenuItem(models.Model):
     class Meta:
         verbose_name = _('Menu Item')
         verbose_name_plural = _('Menu Items')
+        ordering = ['id']
 
 
 class Ingredient(models.Model):
     """ Model representing ingredients used in menu items. """
     name = models.CharField(_('ingredient name'), max_length=255)
-    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, related_name='ingredients')
+    menu_item = models.ManyToManyField(MenuItem, related_name='ingredients')
 
     def __str__(self):
         return self.name

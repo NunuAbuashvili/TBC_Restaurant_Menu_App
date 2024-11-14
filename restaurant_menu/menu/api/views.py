@@ -18,6 +18,7 @@ from .serializers import (
     MenuItemSerializer
 )
 from .filters import SubCategoryFilter
+from .permissions import IsRestaurantOwnerOrReadOnly
 
 
 class MainCategoryViewSet(ListModelMixin,
@@ -61,11 +62,22 @@ class SubCategoryViewSet(ListModelMixin,
     """
     queryset = (SubCategory.objects
                 .select_related('main_category')
-                .prefetch_related('menu_items', 'menu_items__ingredients'))
+                .prefetch_related('menu_items',
+                                  'menu_items__ingredients',
+                                  'main_category__restaurant'))
     serializer_class = BasicSubCategorySerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly, IsRestaurantOwnerOrReadOnly)
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = SubCategoryFilter
+
+    def get_queryset(self):
+        """
+        Optimize the queryset for owner checks by prefetching restaurant owners.
+        """
+        queryset = super().get_queryset()
+        if self.action in ['retrieve', 'update']:
+            queryset = queryset.prefetch_related('main_category__restaurant__owner')
+        return queryset
 
     def get_serializer_class(self):
         """
@@ -97,9 +109,18 @@ class MenuItemViewSet(ListModelMixin,
     queryset = (MenuItem.objects.select_related('restaurant', 'subcategory')
                 .prefetch_related('ingredients'))
     serializer_class = MenuItemSerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly, IsRestaurantOwnerOrReadOnly)
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_fields = {
         'subcategory': ['exact'],
         'name': ['icontains']
     }
+
+    def get_queryset(self):
+        """
+        Optimize the queryset for owner checks by prefetching restaurant owners.
+        """
+        queryset = super().get_queryset()
+        if self.action in ['retrieve', 'update']:
+            queryset = queryset.prefetch_related('restaurant__owner')
+        return queryset

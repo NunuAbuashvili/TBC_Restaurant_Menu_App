@@ -28,7 +28,7 @@ class MiniMenuItemSerializer(serializers.ModelSerializer):
 
     Includes basic information and ingredient names as strings.
     """
-    ingredients = serializers.StringRelatedField(many=True)
+    ingredients = IngredientSerializer(many=True, read_only=True)
 
     class Meta:
         model = MenuItem
