@@ -1,4 +1,5 @@
 from django_filters import rest_framework as filters
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.mixins import (
     ListModelMixin,
     CreateModelMixin,
@@ -42,6 +43,25 @@ class MainCategoryViewSet(ListModelMixin,
         if self.action == 'list':
             return MiniMainCategorySerializer
         return MainCategorySerializer
+
+    def perform_create(self, serializer):
+        """
+        Only the owner can create a new category under the restaurant.
+        """
+        restaurants = serializer.validated_data['restaurant']
+        restaurants_failed = []
+
+        for restaurant in restaurants:
+            if self.request.user == restaurant.owner:
+                serializer.save()
+
+            else:
+                restaurants_failed.append(restaurant.name)
+
+        if restaurants_failed:
+            raise PermissionDenied(
+                f'You don\'t have permission to create a new category under {', '.join(restaurants_failed)}.'
+            )
 
 
 class SubCategoryViewSet(ListModelMixin,
@@ -89,6 +109,24 @@ class SubCategoryViewSet(ListModelMixin,
             return AdvancedSubCategorySerializer
         return BasicSubCategorySerializer
 
+    def perform_create(self, serializer):
+        """
+        Only the owner can create a new subcategory under the restaurant.
+        """
+        main_category = serializer.validated_data['main_category']
+        restaurants = main_category.restaurant.all()
+        failed = True
+
+        for restaurant in restaurants:
+            if restaurant.owner == self.request.user:
+                serializer.save()
+                failed = False
+
+        if failed:
+            raise PermissionDenied(
+                f'You don\'t have permission to create a new subcategory under {main_category.name}.'
+            )
+
 
 class MenuItemViewSet(ListModelMixin,
                       CreateModelMixin,
@@ -124,3 +162,21 @@ class MenuItemViewSet(ListModelMixin,
         if self.action in ['retrieve', 'update']:
             queryset = queryset.prefetch_related('restaurant__owner')
         return queryset
+
+    def perform_create(self, serializer):
+        """
+        Only the owner can create a new menu item under the restaurant.
+        Also, subcategory must belong to the restaurant.
+        """
+        restaurant = serializer.validated_data['restaurant']
+        subcategory = serializer.validated_data['subcategory']
+        permission_message = ''
+
+        if restaurant.owner != self.request.user:
+            permission_message = f'You don\'t have permission to create a new menu item under {restaurant.name}.'
+            raise PermissionDenied(permission_message)
+        if not restaurant in subcategory.main_category.restaurant.all():
+            permission_message = 'The restaurant you have chosen does not have this subcategory.'
+            raise PermissionDenied(permission_message)
+
+        serializer.save()
