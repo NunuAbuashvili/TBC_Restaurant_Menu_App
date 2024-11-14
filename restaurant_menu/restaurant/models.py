@@ -4,7 +4,12 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Restaurant(models.Model):
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='restaurants')
+    """ Model representing a restaurant in the system. """
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='restaurants'
+    )
     name = models.CharField(_('restaurant name'), max_length=255)
     address = models.TextField(_('restaurant address'))
     phone_number = models.CharField(_('phone number'), max_length=13)
